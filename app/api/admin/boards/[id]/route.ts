@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/auth";
 import { setBoardApproval } from "@/lib/db";
 import { getBoard } from "@/lib/boards";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isAdminRequest())) return NextResponse.json({ error: "관리자 로그인이 필요해요." }, { status: 401 });
+  const admin = await getCurrentAdmin();
+  if (!admin) return NextResponse.json({ error: "관리자 로그인이 필요해요." }, { status: 401 });
   const { id } = await params;
   if (!getBoard(id)) return NextResponse.json({ error: "게시판을 찾을 수 없어요." }, { status: 404 });
 
@@ -18,6 +19,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof requiresApproval !== "boolean") {
     return NextResponse.json({ error: "잘못된 값이에요." }, { status: 400 });
   }
-  setBoardApproval(id, requiresApproval);
+  await setBoardApproval(id, requiresApproval);
   return NextResponse.json({ ok: true });
 }

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/auth";
+import { getCurrentAdmin } from "@/lib/auth";
 import { deletePost, getPost, setPostStatus } from "@/lib/db";
 
 const VALID_STATUS = new Set(["published", "pending", "hidden"]);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isAdminRequest())) return NextResponse.json({ error: "관리자 로그인이 필요해요." }, { status: 401 });
+  const admin = await getCurrentAdmin();
+  if (!admin) return NextResponse.json({ error: "관리자 로그인이 필요해요." }, { status: 401 });
   const { id } = await params;
-  if (!getPost(id)) return NextResponse.json({ error: "글을 찾을 수 없어요." }, { status: 404 });
+  if (!(await getPost(id))) return NextResponse.json({ error: "글을 찾을 수 없어요." }, { status: 404 });
 
   let body: unknown;
   try {
@@ -19,14 +20,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof status !== "string" || !VALID_STATUS.has(status)) {
     return NextResponse.json({ error: "잘못된 상태값이에요." }, { status: 400 });
   }
-  setPostStatus(id, status as "published" | "pending" | "hidden");
-  return NextResponse.json({ post: getPost(id) });
+  await setPostStatus(id, status as "published" | "pending" | "hidden", admin.username);
+  return NextResponse.json({ post: await getPost(id) });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isAdminRequest())) return NextResponse.json({ error: "관리자 로그인이 필요해요." }, { status: 401 });
+  const admin = await getCurrentAdmin();
+  if (!admin) return NextResponse.json({ error: "관리자 로그인이 필요해요." }, { status: 401 });
   const { id } = await params;
-  if (!getPost(id)) return NextResponse.json({ error: "글을 찾을 수 없어요." }, { status: 404 });
-  deletePost(id);
+  if (!(await getPost(id))) return NextResponse.json({ error: "글을 찾을 수 없어요." }, { status: 404 });
+  await deletePost(id);
   return NextResponse.json({ ok: true });
 }

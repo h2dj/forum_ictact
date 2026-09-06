@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const existing = getPost(id);
+  const existing = await getPost(id);
   if (!existing || existing.status !== "published") {
     return NextResponse.json({ error: "글을 찾을 수 없어요." }, { status: 404 });
   }
@@ -22,6 +22,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "반응을 다시 선택해주세요." }, { status: 400 });
   }
 
-  const post = addReaction(id, type);
+  const post = await addReaction(id, type);
   return NextResponse.json({ post });
 }

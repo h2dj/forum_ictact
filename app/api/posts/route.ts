@@ -9,7 +9,7 @@ const MAX_NICKNAME = 20;
 
 export async function GET(req: NextRequest) {
   const board = req.nextUrl.searchParams.get("board") ?? undefined;
-  const posts = listPublicPosts(board);
+  const posts = await listPublicPosts(board);
   return NextResponse.json({ posts });
 }
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     nick = nickname.trim().slice(0, MAX_NICKNAME);
   }
 
-  const post = createPost({
+  const post = await createPost({
     boardId,
     emotionId: (emotionId as string) ?? null,
     text: text.trim(),
@@ -51,6 +51,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     post,
-    pending: boardRequiresApproval(boardId),
+    pending: await boardRequiresApproval(boardId),
   });
 }

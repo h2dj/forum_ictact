@@ -11,7 +11,12 @@ export interface BoardDef {
   question: string;
   /** 카드/버튼에 쓰이는 보드 강조색 (라이트/다크 공통 토큰) */
   accent: string;
-  /** true면 새 글이 즉시 공개되지 않고 운영자 승인 후 게시판에 노출됩니다. */
+  /**
+   * true면 새 글이 즉시 공개되지 않고 운영자 승인 후 게시판에 노출됩니다.
+   * 여기 값은 최초 기본값일 뿐이며, 실제로는 관리자 페이지(/admin)에서
+   * 보드별로 언제든 켜고 끌 수 있습니다. 어떤 보드를 승인제로 할지는 행사
+   * 운영진 협의 후 결정해 관리자 페이지에서 설정하세요.
+   */
   requiresApproval: boolean;
 }
 
@@ -23,7 +28,7 @@ export const BOARDS: BoardDef[] = [
     title: "좀 힘들었어요",
     question: '디지털 때문에 "왜 이렇게까지 해야 해?" 싶었던 순간이 있었나요?',
     accent: "rose",
-    requiresApproval: true,
+    requiresApproval: false,
   },
   {
     id: "good",

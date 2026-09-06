@@ -9,6 +9,14 @@ export interface ApiPost {
   reaction_heart: number;
   reaction_idea: number;
   reaction_surprise: number;
+  moderated_by: string | null;
+}
+
+export interface ApiAdmin {
+  id: string;
+  username: string;
+  created_at: number;
+  created_by: string | null;
 }
 
 export interface ApiBoard {

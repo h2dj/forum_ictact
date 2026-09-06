@@ -5,8 +5,7 @@ import { countsByBoard, getBoardSettings } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const counts = countsByBoard();
-  const settings = getBoardSettings();
+  const [counts, settings] = await Promise.all([countsByBoard(), getBoardSettings()]);
   const boards = BOARDS.map((b) => ({
     ...b,
     count: counts[b.id] ?? 0,
