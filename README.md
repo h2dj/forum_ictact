@@ -101,6 +101,24 @@ ADMIN_USERNAME=아이디 ADMIN_PASSWORD=비밀번호 npm run start
 Turso 무료 티어와 Vercel Hobby 플랜 모두 이 정도 규모(2일, 방문객 단위 트래픽)
 행사에는 넉넉하며, 행사 후 사용하지 않으면 비용이 들지 않습니다.
 
+#### Vercel 배포 시 자주 겪는 문제
+
+- **"포스트잇 붙이기"를 누르면 네트워크 에러가 나고, Vercel 로그에
+  `ENOENT: no such file or directory, mkdir '/var/task/data'`가 찍힘**
+  → `DATABASE_URL`이 실제로는 비어 있다는 뜻입니다. Vercel은 파일시스템이
+  읽기 전용이라 로컬 SQLite 파일을 만들 수 없는데, `DATABASE_URL`이
+  안 읽히면 로컬 파일 방식으로 되돌아가려다 이 오류가 납니다. 아래를 확인하세요.
+  1. Vercel 프로젝트 → Settings → Environment Variables에서 `DATABASE_URL`,
+     `DATABASE_AUTH_TOKEN` 이름이 정확한지(오타·공백 없는지) 확인합니다.
+  2. 변수를 적용할 **Environment**(Production/Preview/Development) 체크박스가
+     실제로 접속 중인 배포 환경과 맞는지 확인합니다.
+  3. **환경변수는 저장만 해서는 기존 배포에 적용되지 않습니다.** Deployments
+     탭에서 최신 배포를 다시 "Redeploy" 하거나, 새 커밋을 푸시해 다시
+     배포해야 합니다.
+  4. 배포 후 `https://<내-주소>/api/health`에 접속해 `"database": "remote(DATABASE_URL)"`
+     로 나오는지 확인합니다. `"local(file)"`로 나오면 여전히 환경변수가
+     적용되지 않은 것입니다.
+
 ### 2순위 — 직접 관리형 서버가 필요할 때
 
 Vercel/서버리스 대신 하나의 URL로 계속 띄워두는 서버를 원한다면, 영구 디스크를

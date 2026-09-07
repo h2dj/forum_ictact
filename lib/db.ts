@@ -10,7 +10,22 @@ import { BoardId } from "./boards";
 const DATABASE_URL = process.env.DATABASE_URL || defaultLocalUrl();
 const DATABASE_AUTH_TOKEN = process.env.DATABASE_AUTH_TOKEN;
 
+// Vercel 등 서버리스 환경은 배포된 코드의 파일시스템이 읽기 전용이라(/var/task, ...)
+// 로컬 SQLite 파일을 새로 만들 수 없습니다. 이런 환경에서 DATABASE_URL이 비어 있으면
+// "ENOENT: mkdir" 같은 알아보기 힘든 오류 대신, 바로 원인을 알 수 있는 오류를 던집니다.
+function isReadOnlyServerless(): boolean {
+  return !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
+}
+
 function defaultLocalUrl(): string {
+  if (isReadOnlyServerless()) {
+    throw new Error(
+      "DATABASE_URL 환경변수가 설정되지 않았어요. Vercel 등 서버리스 환경은 파일시스템이 읽기 전용이라 " +
+        "로컬 SQLite 파일을 쓸 수 없습니다. Turso 같은 곳에서 만든 DATABASE_URL(libsql://...)과 " +
+        "DATABASE_AUTH_TOKEN을 프로젝트 환경변수에 등록한 뒤 반드시 '다시 배포(Redeploy)'까지 해주세요 " +
+        "— 환경변수만 저장하면 이미 만들어진 배포에는 적용되지 않습니다. (README '운영 환경 추천' 참고)"
+    );
+  }
   const dataDir = path.join(process.cwd(), "data");
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   return `file:${path.join(dataDir, "forum.db")}`;
