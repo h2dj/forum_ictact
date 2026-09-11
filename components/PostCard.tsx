@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiPost } from "@/lib/types";
 import { EMOTIONS, REACTIONS, getBoard } from "@/lib/boards";
 import { paletteFor } from "@/lib/palette";
 import { relativeTimeKo } from "@/lib/time";
 
-function reactedKey(postId: string, type: string) {
-  return `reacted:${postId}:${type}`;
-}
+// 행사장에서는 태블릿/키오스크 한 대를 여러 사람이 돌아가며 씁니다. 그래서
+// 반응은 "한 브라우저당 한 번"으로 잠그지 않고 몇 번이든 누를 수 있게 하되,
+// 실수로 같은 탭을 두 번 눌러 중복 집계되는 것만 짧게 막습니다.
+const TAP_COOLDOWN_MS = 500;
 
 export default function PostCard({
   post,
@@ -24,34 +25,31 @@ export default function PostCard({
   const palette = paletteFor(colorIndex);
   const emotion = post.emotion_id ? EMOTIONS.find((e) => e.id === post.emotion_id) : undefined;
   const board = getBoard(post.board_id);
-  const [reacted, setReacted] = useState<Record<string, boolean>>({});
+  const [cooldown, setCooldown] = useState<Record<string, boolean>>({});
   const [now, setNow] = useState(0);
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     // relative time을 클라이언트에서만 계산해 hydration 불일치를 피함
     setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 30000);
-    const map: Record<string, boolean> = {};
-    try {
-      for (const r of REACTIONS) {
-        if (localStorage.getItem(reactedKey(post.id, r.id))) map[r.id] = true;
-      }
-    } catch {
-      /* 로컬 저장소를 쓸 수 없어도 카드는 정상 표시되어야 함 */
-    }
-    setReacted(map);
     return () => clearInterval(t);
   }, [post.id]);
 
+  useEffect(() => {
+    const activeTimers = timers.current;
+    return () => {
+      Object.values(activeTimers).forEach(clearTimeout);
+    };
+  }, []);
+
   function handleReact(type: string) {
-    if (reacted[type]) return;
-    setReacted((prev) => ({ ...prev, [type]: true }));
-    try {
-      localStorage.setItem(reactedKey(post.id, type), "1");
-    } catch {
-      /* noop */
-    }
+    if (cooldown[type]) return;
+    setCooldown((prev) => ({ ...prev, [type]: true }));
     onReact?.(post.id, type);
+    timers.current[type] = setTimeout(() => {
+      setCooldown((prev) => ({ ...prev, [type]: false }));
+    }, TAP_COOLDOWN_MS);
   }
 
   const counts: Record<string, number> = {
@@ -93,9 +91,9 @@ export default function PostCard({
           <button
             key={r.id}
             onClick={() => handleReact(r.id)}
-            disabled={!onReact}
+            disabled={!onReact || cooldown[r.id]}
             className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-medium transition active:scale-95 ${
-              reacted[r.id]
+              cooldown[r.id]
                 ? "border-transparent bg-ink text-white"
                 : "border-black/10 bg-white/70 text-ink/60 hover:bg-white"
             } ${!onReact ? "cursor-default opacity-90" : ""}`}
