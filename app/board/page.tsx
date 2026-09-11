@@ -6,6 +6,7 @@ import Link from "next/link";
 import PostCard from "@/components/PostCard";
 import { BOARDS } from "@/lib/boards";
 import { ApiPost } from "@/lib/types";
+import { useShuffledPosts } from "@/lib/useShuffledPosts";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -16,7 +17,9 @@ export default function BoardPage() {
     refreshInterval: 4000,
     revalidateOnFocus: true,
   });
-  const posts = data?.posts ?? [];
+  const rawPosts = data?.posts ?? [];
+  // 항상 같은 글이 맨 위에 고정되지 않도록 20초마다 표시 순서를 무작위로 섞습니다.
+  const posts = useShuffledPosts(rawPosts);
 
   async function handleReact(postId: string, type: string) {
     // optimistic update
@@ -82,7 +85,7 @@ export default function BoardPage() {
         ))}
       </div>
 
-      {!isLoading && posts.length === 0 && (
+      {!isLoading && rawPosts.length === 0 && (
         <div className="mt-16 flex flex-col items-center text-center text-ink/40">
           <span className="text-4xl">📭</span>
           <p className="mt-3 text-[14px]">아직 붙여진 이야기가 없어요.</p>
