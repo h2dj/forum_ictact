@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import PostCard from "@/components/PostCard";
 import { MAIN_BOARDS } from "@/lib/boards";
 import { ApiBoard, ApiPost } from "@/lib/types";
+import { useShuffledPosts } from "@/lib/useShuffledPosts";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -19,7 +20,9 @@ export default function DisplayPage() {
   const { data: boardsData } = useSWR<{ boards: ApiBoard[] }>("/api/boards", fetcher, {
     refreshInterval: 8000,
   });
-  const posts = postsData?.posts ?? [];
+  const rawPosts = postsData?.posts ?? [];
+  // 항상 같은 글이 맨 위에 고정되지 않도록 20초마다 표시 순서를 무작위로 섞습니다.
+  const posts = useShuffledPosts(rawPosts);
   const countFor = (id: string) => boardsData?.boards.find((b) => b.id === id)?.count ?? 0;
 
   return (
@@ -54,7 +57,7 @@ export default function DisplayPage() {
         ))}
       </div>
 
-      {posts.length === 0 ? (
+      {rawPosts.length === 0 ? (
         <div className="mt-24 text-center text-ink/35">
           <p className="text-[18px]">첫 이야기를 기다리고 있어요 🙂</p>
         </div>
