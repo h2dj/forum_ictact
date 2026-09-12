@@ -4,22 +4,34 @@ import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import Link from "next/link";
 import PostCard from "@/components/PostCard";
-import { BOARDS } from "@/lib/boards";
+import { BOARDS, REACTIONS } from "@/lib/boards";
 import { ApiPost } from "@/lib/types";
 import { useShuffledPosts } from "@/lib/useShuffledPosts";
+import { ReactionSortKey, SortMode, sortByPopularity } from "@/lib/sort";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+const SORT_OPTIONS: { id: SortMode; emoji: string; label: string }[] = [
+  { id: "latest", emoji: "🕒", label: "최신순" },
+  { id: "popular", emoji: "🔥", label: "반응순" },
+  { id: "random", emoji: "🎲", label: "랜덤" },
+];
+
 export default function BoardPage() {
   const [tab, setTab] = useState<string>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("latest");
+  const [reactionKey, setReactionKey] = useState<ReactionSortKey>("total");
   const key = `/api/posts?board=${tab}`;
   const { data, isLoading } = useSWR<{ posts: ApiPost[] }>(key, fetcher, {
     refreshInterval: 4000,
     revalidateOnFocus: true,
   });
   const rawPosts = data?.posts ?? [];
-  // 항상 같은 글이 맨 위에 고정되지 않도록 20초마다 표시 순서를 무작위로 섞습니다.
-  const posts = useShuffledPosts(rawPosts);
+  // "랜덤" 모드에서만 20초마다 표시 순서를 무작위로 섞습니다. 다른 모드에서도
+  // 훅 자체는 호출하되(Hooks 규칙), 결과는 랜덤 모드일 때만 사용합니다.
+  const shuffledPosts = useShuffledPosts(rawPosts);
+  const posts =
+    sortMode === "random" ? shuffledPosts : sortMode === "popular" ? sortByPopularity(rawPosts, reactionKey) : rawPosts;
 
   async function handleReact(postId: string, type: string) {
     // optimistic update
@@ -78,11 +90,42 @@ export default function BoardPage() {
         </div>
       </header>
 
-      <div className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+      <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         <TabButton active={tab === "all"} onClick={() => setTab("all")} label="전체" />
         {BOARDS.map((b) => (
           <TabButton key={b.id} active={tab === b.id} onClick={() => setTab(b.id)} label={`${b.emoji} ${b.title}`} />
         ))}
+      </div>
+
+      <div className="-mx-4 mb-5 flex flex-wrap items-center gap-2 px-4 sm:mx-0 sm:px-0">
+        <div className="flex gap-1.5 rounded-full bg-black/[0.04] p-1">
+          {SORT_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              onClick={() => setSortMode(o.id)}
+              className={`rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition ${
+                sortMode === o.id ? "bg-white text-ink shadow-note" : "text-ink/45 hover:text-ink/70"
+              }`}
+            >
+              {o.emoji} {o.label}
+            </button>
+          ))}
+        </div>
+
+        {sortMode === "popular" && (
+          <div className="flex items-center gap-1.5 border-l border-black/10 pl-2.5">
+            <ReactionKeyButton active={reactionKey === "total"} onClick={() => setReactionKey("total")} label="전체" />
+            {REACTIONS.map((r) => (
+              <ReactionKeyButton
+                key={r.id}
+                active={reactionKey === r.id}
+                onClick={() => setReactionKey(r.id)}
+                label={r.emoji}
+                title={r.label}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {!isLoading && rawPosts.length === 0 && (
@@ -123,6 +166,30 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
         active
           ? "border-ink bg-ink text-white"
           : "border-black/10 bg-white text-ink/55 hover:border-black/20"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ReactionKeyButton({
+  active,
+  onClick,
+  label,
+  title,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  title?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`rounded-full px-2.5 py-1 text-[13px] font-semibold transition ${
+        active ? "bg-ink text-white" : "bg-black/[0.04] text-ink/50 hover:bg-black/[0.08]"
       }`}
     >
       {label}
